@@ -1,0 +1,284 @@
+---
+title: "NSC"
+author: "DUTATAMA ROSEWIKA TAUFIQ HADIHARDAYA"
+date: "2024-06-29"
+output:
+  word_document: default
+  html_document: default
+---
+
+#Package
+```{r, warning=FALSE}
+library(foreign)
+library(tidyverse)
+library(writexl)
+```
+
+#Data
+```{r, warning=FALSE}
+setwd("D:/1. Polstat STIS/Tingkat 3/National Statistics Competition Satria Data 2024/Semifinal")
+```
+
+#Package Spasial
+```{r}
+library(sp)
+library(gdalraster) # membaca shapefile
+library(spData)
+library(raster) # text pada peta
+library(spdep) # pembobot data spasial
+library(DescTools) # Uji dependensi
+library(spatialreg) # running model SAR
+library(GWmodel) # Model GWR
+library(spdep)
+library(gstat)
+library(spgwr)
+```
+
+#Data Spasial
+```{r}
+spJawa = shapefile("SHP PULAU JAWA/SHP_PULAU_JAWA_DATA.shp")
+```
+
+#Data Pemodelan [Bukan Spasial]
+```{r}
+library(readxl)
+data_pemodelan <- read_excel("Data Agregasi Pulau Jawa.xlsx")
+data_pemodelan
+```
+
+```{r}
+#Definisi Variabel
+Y <- data_pemodelan$`TPT`
+X1 <- data_pemodelan$`AirMinumLayak`
+X2 <- data_pemodelan$`SanitasiLayak`
+X3 <- data_pemodelan$`IPM`
+X4 <- data_pemodelan$`PersenPendMiskin`
+X5 <- data_pemodelan$`RLS`
+X6 <- data_pemodelan$`PengPerKapTahun`
+X7 <- data_pemodelan$`PengPerKapBulan`
+X8 <- data_pemodelan$`UHH`
+X9 <- data_pemodelan$`HLS`
+
+TPT <- data_pemodelan$`TPT`
+AirMinumLayak <- data_pemodelan$`AirMinumLayak`
+SanitasiLayak <- data_pemodelan$`SanitasiLayak`
+IPM <- data_pemodelan$`IPM`
+PersenPendMiskin <- data_pemodelan$`PersenPendMiskin`
+RLS <- data_pemodelan$`RLS`
+PengPerKapTahun <- data_pemodelan$`PengPerKapTahun`
+PengPerKapBulan <- data_pemodelan$`PengPerKapBulan`
+UHH <- data_pemodelan$`UHH`
+HLS <- data_pemodelan$`HLS`
+data_fiks_pemodelan <- data.frame(Y,X1,X2,X3, X4, X5, X6, X7, X8, X9)
+```
+
+```{r}
+data_fiks_pemodelan
+```
+
+
+#Plot 
+```{r}
+plot(spJawa)
+```
+
+#Mengecek Korelasi
+```{r}
+library(psych)
+pairs.panels(data_fiks_pemodelan, method = "pearson")
+cor(data_fiks_pemodelan)
+```
+
+#Pembentukan Model
+```{r}
+regresi_klasik <- lm(Y~X1+X2+X3+X4+X5+X6+X7+X8+X9)
+regresi_klasik <- lm(TPT~AirMinumLayak+SanitasiLayak+IPM+PersenPendMiskin+RLS+PengPerKapTahun+PengPerKapBulan+UHH+HLS)
+regresi_klasik <- lm(TPT~AirMinumLayak+SanitasiLayak+PersenPendMiskin+RLS+PengPerKapTahun+PengPerKapBulan+UHH+HLS)
+regresi_klasik <- lm(Y~X1+X2+X4+X5+X6+X7+X8)
+```
+
+#Pembentukan Model Terbaik
+```{r}
+library(olsrr)
+ols_step_forward_p(regresi_klasik)
+```
+
+```{r}
+
+```
+
+
+```{r}
+model_terbaik <- lm(Y~X4+X2+X8+X5+X1)
+
+model_terbaik <- lm(TPT~AirMinumLayak+SanitasiLayak+IPM+PersenPendMiskin+RLS+PengPerKapTahun+PengPerKapBulan+UHH+HLS)
+model_terbaik <- lm(TPT~AirMinumLayak+SanitasiLayak+PersenPendMiskin+RLS+PengPerKapTahun+PengPerKapBulan+UHH+HLS)
+model_terbaik <- lm(TPT~AirMinumLayak+SanitasiLayak+PersenPendMiskin+RLS+PengPerKapBulan+UHH+HLS)
+model_terbaik <- lm(TPT~SanitasiLayak+PersenPendMiskin+RLS+PengPerKapBulan+UHH)
+```
+
+```{r}
+summary(model_terbaik)
+```
+
+#Uji Asumsi
+```{r}
+#Normalitas
+library(nortest)
+shapiro.test(model_terbaik$residuals)
+
+#Syarat Multikolinearitas
+library(car)
+vif(model_terbaik)
+
+#Homoskedastisitas
+library(lmtest)
+bptest(model_terbaik)
+```
+
+#MATRIKS PEMBOBOT 
+```{r}
+library(tmap)
+library(raster)
+library(spdep)
+library(spatialreg)
+library(terra)
+```
+
+```{r}
+library(sf)
+
+# Membaca shapefile
+sf_data <- st_read("SHP PULAU JAWA/SHP_PULAU_JAWA_DATA.shp")
+# Menyederhanakan geometri
+# sf_data <- st_simplify(sf_data, dTolerance = 0.001) # Ubah dTolerance sesuai kebutuhan
+
+# Memeriksa validitas geometri
+invalid_geometries <- st_is_valid(sf_data, reason = TRUE)
+print(invalid_geometries)
+```
+```{r}
+library(lwgeom)
+
+# Memperbaiki geometri yang tidak valid
+sf_data <- st_make_valid(sf_data)
+
+# Menyimpan shapefile yang telah diperbaiki
+st_write(sf_data, "SHP PULAU JAWA/SHP_PULAU_JAWA_DATA_VALID.shp")
+```
+
+
+```{r}
+queen.nb=poly2nb(sf_data) #Pembobot queen 
+```
+
+#convert nb to listw type 
+```{r}
+queen.jateng=nb2listw(queen.nb,style="W",zero.policy = TRUE)
+```
+
+#MORAN TEST: PEMBOBOT QUEEN 
+```{r}
+moran.test(sf_data$TPT,queen.jateng,randomisation=FALSE, zero.policy = TRUE) 
+moran.plot(sf_data$TPT,queen.jateng) 
+```
+
+
+```{r}
+spJawa
+```
+
+
+#Konversi Data Spasial
+```{r}
+cord <- cbind(spJawa$LONGITUDE, spJawa$LATITUDE)
+DM <- gw.dist(dp.locat=cord) #matriks jarak
+
+#KONVERT DATA SPASIAL
+longlat <- coordinates(spJawa)
+plot(longlat)
+spJawa$Longitude <- longlat[,1]
+spJawa$Latitude <- longlat[,2]
+coords <- spJawa[c(spJawa$longitude, spJawa$latitude)]
+class(coords)
+```
+
+```{r}
+gwr4
+```
+
+
+#Kernel Regresi
+```{r}
+#Fixed gaussian
+bw.fg1<-bw.gwr(TPT~SanitasiLa+PersenPend+RLS+PengPerK_1+UHH,data=spJawa, kernel = "gaussian",dMat=DM, adaptive = FALSE)
+gwr1<-gwr.basic(TPT~SanitasiLa+PersenPend+RLS+PengPerK_1+UHH,data=spJawa, bw=bw.fg1,kernel = "gaussian", dMat=DM)
+gwr1
+
+#Fixed Bi-Square
+bw.fb2<-bw.gwr(TPT~SanitasiLa+PersenPend+RLS+PengPerK_1+UHH,data=spJawa, kernel = "bisquare",dMat=DM, adaptive = FALSE)
+gwr2<-gwr.basic(TPT~SanitasiLa+PersenPend+RLS+PengPerK_1+UHH,data=spJawa, bw=bw.fb2,kernel = "bisquare", dMat=DM)
+gwr2
+
+#Adaptive gaussian
+bw.Ag3<-bw.gwr(TPT~SanitasiLa+PersenPend+RLS+PengPerK_1+UHH,data=spJawa, kernel = "gaussian",dMat=DM, adaptive = TRUE)
+gwr3<-gwr.basic(TPT~SanitasiLa+PersenPend+RLS+PengPerK_1+UHH,data=spJawa, bw=bw.Ag3,kernel = "gaussian", dMat=DM)
+gwr3
+
+#Adaptive Bi-Square
+bw.Ab4<-bw.gwr(TPT~SanitasiLa+PersenPend+RLS+PengPerK_1+UHH,data=spJawa, kernel = "bisquare",dMat=DM, adaptive = TRUE)
+gwr4<-gwr.basic(TPT~SanitasiLa+PersenPend+RLS+PengPerK_1+UHH,data=spJawa, bw=bw.Ab4,kernel = "bisquare", dMat=DM)
+gwr4
+
+#Fixed Eksponensial
+bw.Ag5<-bw.gwr(TPT~SanitasiLa+PersenPend+RLS+PengPerK_1+UHH,data=spJawa, kernel = "exponential",dMat=DM, adaptive = FALSE)
+gwr5<-gwr.basic(TPT~SanitasiLa+PersenPend+RLS+PengPerK_1+UHH,data=spJawa, bw=bw.Ag5,kernel = "exponential", dMat=DM)
+gwr5
+
+#Adaptive Bi-Square
+bw.Ab6<-bw.gwr(TPT~SanitasiLa+PersenPend+RLS+PengPerK_1+UHH,data=spJawa, kernel = "exponential",dMat=DM, adaptive = TRUE)
+gwr6<-gwr.basic(TPT~SanitasiLa+PersenPend+RLS+PengPerK_1+UHH,data=spJawa, bw=bw.Ab6,kernel = "exponential", dMat=DM)
+gwr6
+```
+
+#Uji t, beta
+```{r}
+#hasil uji t
+ujit <- gwr.t.adjust(gwr4)
+
+kab <- spJawa$KAB_KOTA
+a <- ujit$results$t
+a
+b <- ujit$results$p
+b
+hasil_uji_t <- data.frame(kab,a,b)
+hasil_uji_t
+
+write_xlsx(hasil_uji_t, "HasilUjiT_BiSq.xlsx") 
+```
+
+```{r}
+rtg.model$SDF
+```
+
+
+```{r}
+#Hasil uji beta
+library(spgwr)
+b.gwr <- gwr.sel(TPT~SanitasiLa+PersenPend+RLS+PengPerK_1+UHH,data=spJawa,coords = longlat,gweight=gwr.Gauss,adapt= FALSE)
+
+rtg.model <- gwr(TPT~SanitasiLa+PersenPend+RLS+PengPerK_1+UHH,data=spJawa,coords = longlat, gweight=gwr.Gauss, bandwidth = b.gwr,hatmatrix=TRUE) 
+rtg.model
+
+beta_SanitasiLayak <- rtg.model$SDF$SanitasiLa
+beta_PersenPendMiskin <- rtg.model$SDF$PersenPend
+beta_RLS <- rtg.model$SDF$RLS
+beta_PengPerKapBulan <- rtg.model$SDF$PengPerK_1
+beta_UHH <- rtg.model$SDF$UHH
+beta_intersep <- rtg.model$SDF$X.Intercept.
+
+koefisien_regresi <- data.frame(beta_intersep, beta_SanitasiLayak, beta_PersenPendMiskin, beta_RLS, beta_PengPerKapBulan, beta_UHH)
+
+write_xlsx(koefisien_regresi, "Koefisien Regresi.xlsx") 
+```
+
