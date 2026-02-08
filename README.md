@@ -141,7 +141,7 @@ Statistika Ria dan Festival Sains Data (Satria Data) 2024
 
 ## 📜 Lisensi
 
-Proyek ini disusun untuk **keperluan akademik dan kompetisi statistik**.
+Proyek ini disusun untuk **keperluan National Statistics Competition (NSC) Satria Data 2024**.
 Data bersumber dari BPS dan digunakan sesuai ketentuan yang berlaku.
 
 ---
